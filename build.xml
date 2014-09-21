@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+    name="LitePalSqliteCiper"
+    default="generate_zip_file" >
+
+    <property file="build.properties" />
+
+    <!-- Include Android project properties -->
+
+    <property file="project.properties" />
+
+    <!-- Jar file from where the Proguard Ant tasks are loaded -->
+
+    <taskdef
+        name="proguard"
+        classname="proguard.ant.ProGuardTask"
+        classpath="${proguard_jarfile}" />
+
+    <property
+        name="compile_project"
+        location="${basedir}/${dir_project_compile}" />
+
+    <property
+        name="dir_compile_source"
+        location="${compile_project}/${dir_source}" />
+
+    <property
+        name="dir_compile_classes"
+        location="${compile_project}/${dir_classes}" />
+
+    <property
+        name="dir_compile_jar"
+        location="${compile_project}/${dir_dist}" />
+
+    <property
+        name="dir_compile_libs"
+        location="${compile_project}/${dir_libraries}" />
+
+    <property
+        name="file_compile_jar"
+        location="${dir_compile_jar}/${jar_file}" />
+
+    <property
+        name="dir_release_jar"
+        location="${basedir}/${dir_dist}" />
+
+    <property
+        name="file_release_jar"
+        location="${dir_release_jar}/${jar_file}" />
+
+    <property
+        name="project_target_android_jar"
+        location="${android_platforms}/${target}/${android_jar_file}" />
+
+    <macrodef name="clear_temp_project" >
+
+        <sequential>
+
+            <delete
+                dir="${compile_project}"
+                quiet="true" />
+        </sequential>
+    </macrodef>
+
+    <target name="init" >
+
+        <!-- Delete temp project directory in case it exists -->
+
+        <clear_temp_project />
+
+        <!-- Delete last release files -->
+
+        <delete
+            dir="dir_release_jar"
+            quiet="true" />
+    </target>
+
+    <target name="create_compile_project" >
+
+        <mkdir dir="${compile_project}" />
+
+        <mkdir dir="${dir_compile_source}" />
+
+        <copy todir="${dir_compile_source}" >
+
+            <fileset dir="${basedir}/${dir_source}" >
+
+                <include name="**/*.java" />
+            </fileset>
+        </copy>
+
+        <mkdir dir="${dir_compile_libs}" />
+
+        <copy todir="${dir_compile_libs}" >
+
+            <fileset dir="${basedir}/${dir_libraries}" >
+
+                <include name="**/*.jar" />
+                <include name="**/*.so" />
+            </fileset>
+        </copy>
+    </target>
+
+    <target
+        name="compile"
+        depends="create_compile_project" >
+
+        <mkdir dir="${dir_compile_classes}" />
+
+        <javac
+            bootclasspath="${project_target_android_jar}"
+            debug="false"
+            destdir="${dir_compile_classes}"
+            encoding="${java_encoding}"
+            includeAntRuntime="false"
+            source="${java_source}"
+            target="${java_target}"
+            verbose="${verbose}" >
+
+            <src path="${dir_compile_source}" />
+
+            <classpath>
+
+                <fileset dir="${dir_compile_libs}" >
+
+                    <include name="*.jar" />
+                    <include name="*.so" />
+                </fileset>
+            </classpath>
+        </javac>
+    </target>
+
+    <target
+        name="package_jar"
+        depends="compile" >
+
+        <mkdir dir="${dir_compile_jar}" />
+
+        <jar jarfile="${file_compile_jar}" >
+
+            <fileset
+                dir="${dir_compile_classes}"
+                includes="**/*.class" />
+        </jar>
+    </target>
+
+    <target
+        name="obfuscate"
+        depends="package_jar" >
+
+        <mkdir dir="${dir_release_jar}" />
+
+        <proguard configuration="${basedir}/${proguard_config}" >
+			-injars '${file_compile_jar}'
+			-outjars '${file_release_jar}'
+			-libraryjars '${project_target_android_jar}'
+			-libraryjars '${dir_compile_libs}'
+        </proguard>
+    </target>
+
+    <target name="build_release_jar" >
+
+        <antcall target="init" />
+
+        <antcall target="obfuscate" />
+
+        <clear_temp_project />
+    </target>
+
+    <target
+        name="generate_zip_file"
+        depends="build_release_jar" >
+        
+        <property name="dist_libraries" location="${dir_release_jar}/${dir_libraries}" />
+
+        <mkdir dir="${dist_libraries}" />
+
+        <copy todir="${dist_libraries}" >
+
+            <fileset dir="${basedir}/${dir_libraries}" >
+
+                <include name="**/*.jar" />
+                <include name="**/*.so" />
+            </fileset>
+        </copy>
+
+        <zip destfile="${dir_release_jar}/${dist_file}" >
+
+            <fileset dir="${dir_release_jar}" >
+
+                <include name="**/*.jar" />
+                <include name="**/*.so" />
+            </fileset>
+        </zip>
+
+        <delete
+            dir="${dist_libraries}"
+            quiet="true" />
+
+        <delete quiet="true" >
+
+            <fileset
+                dir="${dir_release_jar}"
+                includes="*.jar" />
+        </delete>
+    </target>
+
+</project>
